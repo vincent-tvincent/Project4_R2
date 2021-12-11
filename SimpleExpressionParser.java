@@ -1,84 +1,337 @@
-import java.util.function.*;
-
 /**
- * TODO: Implement this class.
+ * Starter code to implement an ExpressionParser. Your parser methods should use the following grammar:
+ * S → S+M | S-M | M
+ * M → M*E | M/E | E
+ * E → P^E | P
+ * P → (S) | L | V
+ * L → <float> | x
+ *
  */
 public class SimpleExpressionParser implements ExpressionParser {
 	/*
-	 * Grammar:
-	 * S -> A | P
-	 * A -> A+M | A-M | M
-	 * M -> M*E | M/E | E
-	 * E -> P^E | P
-	 * P -> (S) | L | V
-	 * L -> <float>
-	 * V -> x
+	 * Attempts to create an expression tree -- flattened as much as possible -- from the specified String.
+	 * Throws a ExpressionParseException if the specified string cannot be parsed.
+	 * @param str the string to parse into an expression tree
+	 * @return the Expression object representing the parsed expression tree
 	 */
 	public Expression parse (String str) throws ExpressionParseException {
+		// Remove spaces -- this simplifies the parsing logic
 		str = str.replaceAll(" ", "");
-		Expression expression = null;  // TODO: set expression to the result of the parser
+		Expression expression = parseExpression(str);
 		if (expression == null) {
+			// If we couldn't parse the string, then raise an error
 			throw new ExpressionParseException("Cannot parse expression: " + str);
 		}
 
+		// Flatten the expression before returning
+		expression.flatten();
 		return expression;
 	}
 
-	// TODO: once you implement a VariableExpression class, fix the return-type below.
-	protected /*Variable*/Expression parseVariableExpression (String str) {
-		if (str.equals("x")) {
-			// TODO implement the VariableExpression class and uncomment line below
-			// return new VariableExpression();
-		}
-		return null;
+	protected Expression parseExpression (String str) {
+		System.out.println("S");
+		return parseS(str);
 	}
 
-	// TODO: once you implement a LiteralExpression class, fix the return-type below.
-	protected /*Literal*/Expression parseLiteralExpression (String str) {
-		// From https://stackoverflow.com/questions/3543729/how-to-check-that-a-string-is-parseable-to-a-double/22936891:
-		final String Digits     = "(\\p{Digit}+)";
-		final String HexDigits  = "(\\p{XDigit}+)";
-		// an exponent is 'e' or 'E' followed by an optionally 
-		// signed decimal integer.
-		final String Exp        = "[eE][+-]?"+Digits;
-		final String fpRegex    =
-		    ("[\\x00-\\x20]*"+ // Optional leading "whitespace"
-		    "[+-]?(" +         // Optional sign character
-		    "NaN|" +           // "NaN" string
-		    "Infinity|" +      // "Infinity" string
+	/*
+	 * parses summation out of a string or continues the grammar
+	 * S → S+M | S-M | M
+	 */
+	private Expression parseS(String str) {
+		char[] chars = str.toCharArray();
+		// find + outside of ()
+		int summation = -1;
+		String sign = "";
+		int pDepth = 0;
+		for (int i = 0; i < chars.length; i++) {
+			char c = chars[i];
+			if(c == '(') {
+				pDepth++;
+			} else if(c == ')') {
+				pDepth--;
+				// if out of place ) return null
+				if(pDepth < 0) {
+					return null;
+				}
+			} else if(c == '+' || c == '-') {
+				if(pDepth == 0) {
+					summation = i;
+					sign += c;
+					// if + has nothing to left or right
+					if(i == 0 || i == chars.length - 1) {
+						return null;
+					}
 
-		    // A decimal floating-point string representing a finite positive
-		    // number without a leading sign has at most five basic pieces:
-		    // Digits . Digits ExponentPart FloatTypeSuffix
-		    // 
-		    // Since this method allows integer-only strings as input
-		    // in addition to strings of floating-point literals, the
-		    // two sub-patterns below are simplifications of the grammar
-		    // productions from the Java Language Specification, 2nd 
-		    // edition, section 3.10.2.
-
-		    // Digits ._opt Digits_opt ExponentPart_opt FloatTypeSuffix_opt
-		    "((("+Digits+"(\\.)?("+Digits+"?)("+Exp+")?)|"+
-
-		    // . Digits ExponentPart_opt FloatTypeSuffix_opt
-		    "(\\.("+Digits+")("+Exp+")?)|"+
-
-		    // Hexadecimal strings
-		    "((" +
-		    // 0[xX] HexDigits ._opt BinaryExponent FloatTypeSuffix_opt
-		    "(0[xX]" + HexDigits + "(\\.)?)|" +
-
-		    // 0[xX] HexDigits_opt . HexDigits BinaryExponent FloatTypeSuffix_opt
-		    "(0[xX]" + HexDigits + "?(\\.)" + HexDigits + ")" +
-
-		    ")[pP][+-]?" + Digits + "))" +
-		    "[fFdD]?))" +
-		    "[\\x00-\\x20]*");// Optional trailing "whitespace"
-
-		if (str.matches(fpRegex)) {
-			// TODO implement the LiteralExpression class and uncomment line below
-			// return new LiteralExpression(str);
+					break;
+				}
+			}
 		}
-		return null;
+
+		// no plus or minus found
+		if(summation == -1) {
+			// try M
+			System.out.println("M");
+			return parseM(str);
+		} else {
+			// S + M || S - M
+			System.out.println("S " + sign + " M");
+			Operator op = new Operator(sign);
+
+			String s1 = str.substring(0, summation);
+			System.out.println("S1:" + s1);
+			String s2 = str.substring(summation + 1);
+			System.out.println("S2:" + s2);
+			Expression first = parseS(s1);
+			Expression second = parseM(s2);
+
+			// if either sub parsed expression returns null
+			if(first == null || second == null) {
+				return null;
+			}
+
+			first.setParent(op);
+			second.setParent(op);
+
+			op.addSubexpression(first);
+			op.addSubexpression(second);
+
+			return op;
+		}
+	}
+
+	/*
+	 * parses multiplication out of a string or continues the grammar
+	 * M → M*E | M/E | E
+	 */
+	private Expression parseM(String str) {
+
+		char[] chars = str.toCharArray();
+		// find * outside of ();
+		int mult = -1;
+		String sign = "";
+		int pDepth = 0;
+		for (int i = 0; i < chars.length; i++) {
+			char c = chars[i];
+			if(c == '(') {
+				pDepth++;
+			} else if(c == ')') {
+				pDepth--;
+				// if out of place ) return null
+				if(pDepth < 0) {
+					return null;
+				}
+			} else if(c == '*' || c == '/') {
+				if(pDepth == 0) {
+					mult = i;
+					sign += c;
+
+					// if * has nothing to left or right
+					if(i == 0 || i == chars.length - 1) {
+						return null;
+					}
+
+					break;
+				}
+			}
+		}
+
+		// if no * or /
+		if(mult == -1) {
+			// try E
+			System.out.println("E");
+			return parseE(str);
+		} else {
+			// M * P || M / P
+			System.out.println("M " + sign + " P");
+			Operator op = new Operator(sign);
+
+			String s1 = str.substring(0, mult);
+			System.out.println("S1:" + s1);
+			String s2 = str.substring(mult + 1);
+			System.out.println("S2:" + s2);
+			Expression first = parseS(s1);
+			Expression second = parseM(s2);
+
+			// if either sub parsed expression returns null
+			if(first == null || second == null) {
+				return null;
+			}
+
+			first.setParent(op);
+			second.setParent(op);
+
+			op.addSubexpression(first);
+			op.addSubexpression(second);
+
+			return op;
+		}
+	}
+
+	/*
+	 * parses exponents out of a string or continues the grammar
+	 * E → P^E | P
+	 */
+	private Expression parseE(String str) {
+
+		char[] chars = str.toCharArray();
+		// find ^ outside of ();
+		int expo = -1;
+		String sign = "";
+		int pDepth = 0;
+		for (int i = 0; i < chars.length; i++) {
+			char c = chars[i];
+			if(c == '(') {
+				pDepth++;
+			} else if(c == ')') {
+				pDepth--;
+				// if out of place ) return null
+				if(pDepth < 0) {
+					return null;
+				}
+			} else if(c == '^') {
+				if(pDepth == 0) {
+					expo = i;
+					sign += c;
+
+					// if ^ has nothing to left or right
+					if(i == 0 || i == chars.length - 1) {
+						return null;
+					}
+
+					break;
+				}
+			}
+		}
+
+		// if no ^
+		if(expo == -1) {
+			// try P
+			System.out.println("P");
+			return parseP(str);
+		} else {
+			// P ^ E
+			System.out.println("P " + sign + " E");
+			Operator op = new Operator(sign);
+
+			String s1 = str.substring(0, expo);
+			System.out.println("S1:" + s1);
+			String s2 = str.substring(expo + 1);
+			System.out.println("S2:" + s2);
+			Expression first = parseS(s1);
+			Expression second = parseE(s2);
+
+			// if either sub parsed expression returns null
+			if(first == null || second == null) {
+				return null;
+			}
+
+			first.setParent(op);
+			second.setParent(op);
+
+			op.addSubexpression(first);
+			op.addSubexpression(second);
+
+			return op;
+		}
+	}
+
+	/*
+	 * parses parenthesis out of a string or continues the grammar
+	 */
+	private Expression parseP(String str) {
+
+		char[] chars = str.toCharArray();
+		// find (
+		int start = -1;
+		int end = -1;
+		int count = 0;
+		for (int i = 0; i < chars.length; i++) {
+			char c = chars[i];
+			if(c == '(') {
+				if(start != -1) {
+					count++;
+				} else {
+					start = i;
+					System.out.println("start: " + i);
+				}
+			} else if (c == ')') {
+				if(start != -1) {
+					if(count > 0) {
+						count--;
+					} else {
+						end = i;
+						System.out.println(count);
+						System.out.println("end: " + i);
+						break;
+					}
+				} else {
+					// out of place )
+					return null;
+				}
+			}
+		}
+
+		// if no end or if empty
+		if(start != -1 && end == -1 || start == end -1) {
+			return null;
+		}
+
+		if(end != -1) {
+			// if there are more characters
+			if(end != chars.length - 1) {
+				// try (S) + S
+				System.out.println("(S)+S");
+
+				char next = chars[end + 1];
+				if(next == ')') {
+					return null;
+				}
+
+				return parseS(str.substring(start));
+			} else {
+
+				// (S)
+				System.out.println("(S)");
+				Operator op = new Operator("()");
+				String s = str.substring(start + 1, end);
+				System.out.println(s);
+				Expression e = parseS(str.substring(start + 1, end));
+				if (e == null) {
+					return null;
+				}
+				e.setParent(op);
+				op.addSubexpression(e);
+
+				return op;
+			}
+		} else {
+			for(int ascii : chars) {
+				// if there are + * or (), continue
+				if (ascii >= 40 && ascii <= 43) {
+					// S
+					System.out.println("S");
+					return parseS(str);
+				}
+			}
+
+			// L
+			System.out.println("L");
+			return parseL(str);
+		}
+	}
+
+	/*
+	 * parses literal out of a string or returns null if it finds illegal characters
+	 */
+	public Expression parseL(String str) {
+		// L
+		char[] chars = str.toCharArray();
+		for(int ascii : chars) {
+			// if not [a-z] || [A-Z] || [0-9]
+			if(!(((ascii >= 97 && ascii <= 122) || (ascii >= 65 && ascii <= 90)) || (ascii >= 48 && ascii <= 57))){
+				return null;
+			}
+		}
+		return new Literal(str);
 	}
 }

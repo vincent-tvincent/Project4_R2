@@ -28,5 +28,5 @@ interface Expression {
 
 	void flatten();
 
-	void setParent(Operator parent);
+	void setParent(CompoundExpression parent);
 }

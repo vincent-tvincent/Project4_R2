@@ -9,7 +9,7 @@ public class Literal implements Expression{
     public CompoundExpression getParent() {
         return _parent;
     }
-
+    @Override
     public void setParent(CompoundExpression parent) {
         _parent = parent;
     }
@@ -25,14 +25,10 @@ public class Literal implements Expression{
 
     }
 
-    @Override
-    public void setParent(Operator parent) {
-
-    }
 
     @Override
     public double evaluate(double x) {
-        return 0;
+        return x;
     }
 
     public String convertToString(int indentLevel) {
