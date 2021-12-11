@@ -28,6 +28,7 @@ public class Operator implements CompoundExpression {
         return _parent;
     }
 
+    @Override
     public void setParent(CompoundExpression parent) {
         _parent = (Operator) parent;
     }
@@ -66,14 +67,20 @@ public class Operator implements CompoundExpression {
         }
     }
 
-    @Override
-    public void setParent(Operator parent) {
-
-    }
 
     @Override
     public double evaluate(double x) {
-        return 0;
+        flatten();
+        double result = _subexpresions.get(0).evaluate(x);
+        for(int i = 1; i < _subexpresions.size(); i++) {
+            switch (_identifier) {
+                case "+" :
+                    result += _subexpresions.get(i).evaluate(x);
+                    break;
+
+            }
+        }
+        return result;
     }
 
     /*
