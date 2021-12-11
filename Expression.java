@@ -25,4 +25,8 @@ interface Expression {
 			sb.append('\t');
 		}
 	}
+
+	void flatten();
+
+	void setParent(Operator parent);
 }
