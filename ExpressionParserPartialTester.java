@@ -88,7 +88,7 @@ public class ExpressionParserPartialTester {
          * Verifies that a specific expression is evaluated correctly.
          */
         public void testEvaluate5 () throws ExpressionParseException {
-                final String expressionStr = "x^3^2";
+                final String expressionStr = "x^3^3";
                 assertEquals(262144, (int) _parser.parse(expressionStr).evaluate(4));
         }
 }

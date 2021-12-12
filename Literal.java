@@ -28,7 +28,14 @@ public class Literal implements Expression{
 
     @Override
     public double evaluate(double x) {
-        return x;
+        if(_data.equals("x")){
+            System.out.println("x evaluated: x=" + x);
+            return x;
+        }else{
+            System.out.println("constant: " + _data);
+            return Double.valueOf(_data);
+        }
+
     }
 
     public String convertToString(int indentLevel) {

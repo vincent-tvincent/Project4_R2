@@ -1,3 +1,4 @@
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -87,8 +88,6 @@ public class Operator implements CompoundExpression {
                     result /= _subexpresions.get(i).evaluate(x);
                 case "^" :
                     result = Math.pow(result, _subexpresions.get(i).evaluate(x));
-                    break;
-                case "()" :
                     break;
             }
         }
