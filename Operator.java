@@ -77,7 +77,19 @@ public class Operator implements CompoundExpression {
                 case "+" :
                     result += _subexpresions.get(i).evaluate(x);
                     break;
-
+                case "-" :
+                    result -= _subexpresions.get(i).evaluate(x);
+                    break;
+                case "*" :
+                    result *= _subexpresions.get(i).evaluate(x);
+                    break;
+                case "/" :
+                    result /= _subexpresions.get(i).evaluate(x);
+                case "^" :
+                    result = Math.pow(result, _subexpresions.get(i).evaluate(x));
+                    break;
+                case "()" :
+                    break;
             }
         }
         return result;
