@@ -29,10 +29,8 @@ public class Literal implements Expression{
     @Override
     public double evaluate(double x) {
         if(_data.equals("x")){
-            System.out.println("x evaluated: x=" + x);
             return x;
         }else{
-            System.out.println("constant: " + _data);
             return Double.valueOf(_data);
         }
 
@@ -41,7 +39,16 @@ public class Literal implements Expression{
     public String convertToString(int indentLevel) {
         StringBuilder s = new StringBuilder();
         Expression.indent(s, indentLevel);
-        s.append(_data);
+        String l = _data;
+        char[] chars = l.toCharArray();
+        for(int ascii : chars) {
+            // [0-9]
+            if(ascii >= 48 && ascii <= 57){
+                l += ".0";
+                break;
+            }
+        }
+        s.append(l);
         return s.toString();
     }
 }
